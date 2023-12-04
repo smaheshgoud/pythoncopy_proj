@@ -1,0 +1,28 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Install smbclient') {
+            steps {
+                script {
+                    // You may need to adjust the package manager based on your Linux distribution (e.g., apt for Debian/Ubuntu, yum for CentOS)
+                    sh 'sudo apt-get update && sudo apt-get install -y smbclient'
+                }
+            }
+        }
+
+        stage('Access Windows Folder') {
+            steps {
+                script {
+                    def windowsServer = 'windows-server'
+                    def windowsShare = 'YourShare'
+                    def windowsUsername = 'your-username'
+                    def windowsPassword = 'your-password'
+                    def localFolder = '/path/to/local/folder'
+
+                    sh "smbclient //${windowsServer}/${windowsShare} -U ${windowsUsername}%${windowsPassword} -c 'lcd ${localFolder}; get YourFile.txt'"
+                }
+            }
+        }
+    }
+}
