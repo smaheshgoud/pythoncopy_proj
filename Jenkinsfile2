@@ -2,15 +2,19 @@ pipeline {
     agent any
 
     stages {
-        stage('Install smbclient') {
+        stage('Create and Activate Virtual Environment') {
             steps {
                 script {
-                    sh 'sudo apt-get update && sudo apt-get install -y smbclient'
+                    // Create and activate the virtual environment
+                    sh 'python3 -m venv myenv && source myenv/bin/activate'
+
+                    // Install required packages, e.g., smbclient
+                    sh 'pip install pysmbclient'
                 }
             }
         }
 
-        stage('Access Windows Folder') {
+        stage('Access Windows Folder and Copy File') {
             steps {
                 script {
                     def windowsServer = 'windows-server'
@@ -19,20 +23,27 @@ pipeline {
                     def remoteSourceFolder = 'C:\\Path\\To\\Your\\Source\\Folder'
                     def remoteDestinationFolder = 'C:\\Path\\To\\Your\\Destination\\Folder'
                     def localFolder = '/path/to/local/folder'
+                    def pythonScriptPath = '/path/to/local/python/script.py'
 
+                    // Use smbclient within the virtual environment to copy the file
                     sh "smbclient //${windowsServer}/C\$ -U ${windowsUsername}%${windowsPassword} -c 'lcd ${localFolder}; get ${remoteSourceFolder}/YourFile.txt'"
+
+                    // Create the Python script on the remote Windows server
+                    sh "echo 'import shutil\nshutil.copy(\"${remoteSourceFolder}/YourFile.txt\", \"${remoteDestinationFolder}/\")' > ${pythonScriptPath}"
+
+                    // Run the Python script on the remote Windows server
+                    sh "python ${pythonScriptPath}"
                 }
             }
         }
 
-        stage('Execute Python Script') {
+        // Add other stages as needed
+
+        stage('Deactivate Virtual Environment') {
             steps {
                 script {
-                    def pythonScript = 'path/to/your/python/remote_copy.py'
-                    def sourceFolder = 'C:\\Path\\To\\Your\\Source\\Folder'
-                    def destinationFolder = 'C:\\Path\\To\\Your\\Destination\\Folder'
-
-                    sh "python ${pythonScript} ${sourceFolder} ${destinationFolder}"
+                    // Deactivate the virtual environment
+                    sh 'deactivate'
                 }
             }
         }
