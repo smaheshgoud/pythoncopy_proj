@@ -5,7 +5,6 @@ pipeline {
         stage('Install smbclient') {
             steps {
                 script {
-                    // You may need to adjust the package manager based on your Linux distribution (e.g., apt for Debian/Ubuntu, yum for CentOS)
                     sh 'sudo apt-get update && sudo apt-get install -y smbclient'
                 }
             }
@@ -15,12 +14,25 @@ pipeline {
             steps {
                 script {
                     def windowsServer = 'windows-server'
-                    def windowsShare = 'YourShare'
                     def windowsUsername = 'your-username'
                     def windowsPassword = 'your-password'
+                    def remoteSourceFolder = 'C:\\Path\\To\\Your\\Source\\Folder'
+                    def remoteDestinationFolder = 'C:\\Path\\To\\Your\\Destination\\Folder'
                     def localFolder = '/path/to/local/folder'
 
-                    sh "smbclient //${windowsServer}/${windowsShare} -U ${windowsUsername}%${windowsPassword} -c 'lcd ${localFolder}; get YourFile.txt'"
+                    sh "smbclient //${windowsServer}/C\$ -U ${windowsUsername}%${windowsPassword} -c 'lcd ${localFolder}; get ${remoteSourceFolder}/YourFile.txt'"
+                }
+            }
+        }
+
+        stage('Execute Python Script') {
+            steps {
+                script {
+                    def pythonScript = 'path/to/your/python/remote_copy.py'
+                    def sourceFolder = 'C:\\Path\\To\\Your\\Source\\Folder'
+                    def destinationFolder = 'C:\\Path\\To\\Your\\Destination\\Folder'
+
+                    sh "python ${pythonScript} ${sourceFolder} ${destinationFolder}"
                 }
             }
         }
