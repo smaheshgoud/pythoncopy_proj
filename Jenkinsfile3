@@ -1,0 +1,23 @@
+pipeline {
+    agent any
+
+    environment {
+        REMOTE_SERVER = credentials('your_remote_server_credential_id')
+        USERNAME = credentials('your_username_credential_id')
+        PASSWORD = credentials('your_password_credential_id')
+        SOURCE_FOLDER = 'C:\\path\\to\\source_folder'
+        DESTINATION_FOLDER = 'C:\\path\\to\\destination_folder'
+        PYTHON_SCRIPT = 'copy_files.py'
+    }
+
+    stages {
+        stage('Access Files on Remote Server') {
+            steps {
+                script {
+                    // Run the Python script with command-line arguments
+                    sh "python ${PYTHON_SCRIPT} ${REMOTE_SERVER} ${SOURCE_FOLDER} ${DESTINATION_FOLDER} ${USERNAME} ${PASSWORD}"
+                }
+            }
+        }
+    }
+}
