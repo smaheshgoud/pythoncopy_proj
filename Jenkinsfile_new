@@ -1,0 +1,56 @@
+pipeline {
+    agent any
+
+    environment {
+        SONARQUBE_HOME = '/path/to/sonarqube'
+        SONARQUBE_SERVER = 'http://sonarqube-server:9000'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                script {
+                    // Install dependencies
+                    sh 'pip install -r requirements.txt'
+
+                    // Run unit tests with coverage
+                    sh 'coverage run -m unittest discover -v'
+
+                    // Generate coverage.xml file
+                    sh 'coverage xml'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    // Run SonarQube analysis
+                    withSonarQubeEnv('SonarQube') {
+                        sh """
+                            sonar-scanner \
+                                -Dsonar.projectKey=my-python-project \
+                                -Dsonar.sources=. \
+                                -Dsonar.python.coverage.reportPaths=coverage.xml \
+                                -Dsonar.host.url=${SONARQUBE_SERVER}
+                        """
+                    }
+                }
+            }
+        }
+
+        // Add more stages as needed
+    }
+
+    post {
+        always {
+            // Cleanup or additional tasks to run after all stages
+        }
+    }
+}
