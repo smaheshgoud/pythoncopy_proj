@@ -99,3 +99,23 @@ pipeline {
     }
 }
 ####
+pipeline {
+    agent any
+
+    environment {
+        REMOTE_SERVER = 'your_remote_server'
+        USERNAME = credentials('your_credentials_id')
+        PASSWORD = credentials('your_credentials_id')
+    }
+
+    stages {
+        stage('Access Remote Files') {
+            steps {
+                bat "net use \\\\${REMOTE_SERVER} /user:${USERNAME} ${PASSWORD}"
+                bat "dir \\\\${REMOTE_SERVER}\\path\\to\\files"
+            }
+        }
+    }
+}
+
+
