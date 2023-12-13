@@ -57,3 +57,45 @@ pipeline {
         }
     }
 }
+
+###
+pipeline {
+    agent any
+
+    stages {
+        stage('Check Access to Local Folder') {
+            steps {
+                script {
+                    // Specify the remote server details
+                    def remoteServer = 'RemoteServer'
+                    def remoteFolder = 'C:\\Path\\To\\Your\\Folder'
+
+                    // Use PowerShell to check if the folder exists on the remote server
+                    def folderExists = powershell(returnStatus: true, script: "Test-Path -Path '\\\\${remoteServer}\\${remoteFolder}'")
+
+                    if (folderExists == 0) {
+                        echo "Access to the folder on the remote server is verified."
+                    } else {
+                        error "Unable to access the folder on the remote server."
+                    }
+                }
+            }
+        }
+
+        stage('Run Python Script') {
+            steps {
+                script {
+                    // Run your Python script here
+                    bat 'python C:\\path\\to\\your_script.py'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            // Perform cleanup or additional steps as needed
+        }
+    }
+}
+####
