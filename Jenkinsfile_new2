@@ -1,0 +1,59 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                script {
+                    // Define your Bitbucket repository URL
+                    def repoUrl = 'https://username:password@bitbucket.org/your_username/your_repo.git'
+                    
+                    // Specify the local directory where you want to clone the repository
+                    def localRepoPath = 'C:\\path\\to\\your\\local\\repo'
+
+                    // Git clone step
+                    git branch: 'main', credentialsId: 'your_bitbucket_credentials_id', url: repoUrl
+
+                    // Check if the repository is cloned successfully
+                    if (fileExists(localRepoPath)) {
+                        echo "Repository cloned successfully."
+
+                        // Continue with accessing network drive or any other steps
+
+                    } else {
+                        error "Failed to clone the repository."
+                    }
+                }
+            }
+        }
+
+        stage('Access Network Drive') {
+            steps {
+                script {
+                    // Define the network drive path
+                    def networkDrivePath = '\\\\your_network_drive\\your_shared_folder'
+
+                    // Define the local path where you want to copy the files
+                    def localPath = 'C:\\path\\to\\your\\local\\folder'
+
+                    // Run a command to map the network drive
+                    bat "net use Z: ${networkDrivePath} /user:your_username your_password"
+
+                    // Check if the network drive is mapped successfully
+                    if (fileExists(localPath)) {
+                        echo "Network drive mapped successfully."
+
+                        // Now you can use Python to work with the files
+                        bat "python C:\\path\\to\\your\\python_script.py"
+
+                    } else {
+                        error "Failed to map the network drive."
+                    }
+
+                    // Unmap the network drive when done
+                    bat 'net use Z: /delete'
+                }
+            }
+        }
+    }
+}
