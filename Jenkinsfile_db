@@ -1,0 +1,44 @@
+pipeline {
+    agent any
+
+    environment {
+        // Define environment variables to store credential IDs
+        DB_CREDENTIAL_ID = 'your-db-credential-id'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/your-username/your-repo.git'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'pip install pyodbc'
+            }
+        }
+
+        stage('Run Python Script') {
+            steps {
+                script {
+                    // Retrieve database credentials from Jenkins Credentials
+                    DB_USERNAME = credentials("${DB_CREDENTIAL_ID}_USERNAME").username
+                    DB_PASSWORD = credentials("${DB_CREDENTIAL_ID}_PASSWORD").password
+
+                    // Execute the Python script with database credentials
+                    sh "python your_script.py ${DB_USERNAME} ${DB_PASSWORD}"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline successfully completed!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
