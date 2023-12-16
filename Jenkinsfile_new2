@@ -117,5 +117,25 @@ pipeline {
         }
     }
 }
+######
 
-
+pipeline {
+    agent any
+    tools {
+        winrm "com.chef.winrm.WinRMClient"
+    }
+    stages {
+        stage('Access data') {
+            steps {
+                winrm (
+                    address: "remote-server-name",
+                    username: "remote-username",
+                    password: "remote-password",
+                    shell: 'powershell',
+                    command: 'Get-Content C:\\path\\to\\data.txt',
+                    output: 'data.txt'
+                )
+            }
+        }
+    }
+}
