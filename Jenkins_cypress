@@ -1,1 +1,44 @@
-j
+pipeline {
+    agent any
+
+    environment {
+        // Define your npm registry URL and authentication token as environment variables
+        NPM_REGISTRY_URL = 'https://your-registry-url'
+        NPM_AUTH_TOKEN = credentials('your-credentials-id')
+    }
+
+    stages {
+        stage('Set NPM Registry') {
+            steps {
+                script {
+                    // Set npm registry with authentication
+                    sh "npm config set registry ${NPM_REGISTRY_URL}"
+                    sh "npm config set //${NPM_REGISTRY_URL}/:_authToken=${NPM_AUTH_TOKEN}"
+                }
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    // Install Node.js and npm
+                    def nodejs = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
+                    env.PATH = "${nodejs}/bin:${env.PATH}"
+
+                    // Install npm dependencies
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Run Cypress Tests') {
+            steps {
+                script {
+                    // Run Cypress tests
+                    sh 'npx cypress run'
+                }
+            }
+        }
+    }
+}
+
