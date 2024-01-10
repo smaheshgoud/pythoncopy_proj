@@ -1,0 +1,37 @@
+pipeline {
+    agent any
+
+    environment {
+        // Set the JAVA_HOME environment variable (if needed)
+        JAVA_HOME = 'C:\\Program Files\\Java\\jdk1.8.0_291'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    // Windows command to checkout code
+                    checkout scm
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    // Windows command to run SonarQube analysis
+                    bat "\"${JAVA_HOME}\\bin\\java\" -jar /xenv/scripts/bin/sonarscanner/latest/lib/sonar-scanner-cli-${scanner_version}.jar -Dsonar.projectKey=${projectkey} -Dsonar.branch.name=%BBBranch% -Dmaven.test.skip=true -Dsonar.userHome=%WORKSPACE%"
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                script {
+                    // Windows command to build MSBuild project
+                    bat 'msbuild YourSolution.sln /p:Configuration=Release /p:Platform=AnyCPU'
+                }
+            }
+        }
+    }
+}
