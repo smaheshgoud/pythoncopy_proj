@@ -13,7 +13,11 @@ BITBUCKET_ORG="bitbucket_organization"
 GITHUB_ORG="github_organization"
 
 # Bitbucket repositories list
-REPOSITORIES=("repo1" "repo2" "repo3")
+#REPOSITORIES=("repo1" "repo2" "repo3")
+
+# Read repository names from a text file
+REPOSITORIES_FILE="repositories.txt"
+REPOSITORIES=($(cat $REPOSITORIES_FILE))
 
 for REPO in "${REPOSITORIES[@]}"
 do
