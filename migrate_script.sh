@@ -27,6 +27,9 @@ do
     # Change directory to the cloned repository
     cd ${REPO}.git
 
+    # Create the repository on GitHub (if it doesn't exist)
+    curl -X POST -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3+json" "https://api.github.com/orgs/${GITHUB_ORG}/repos" -d '{"name":"'$REPO'"}'
+
     # Change the remote URL to GitHub
     git remote set-url --push origin https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com/${GITHUB_ORG}/${REPO}.git
 
