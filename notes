@@ -1,0 +1,4 @@
+notes  
+openssl command
+================
+openssl req -x509 -newkey rsa:4096 -keyout private_key.pem -out cacert.pem -days 365
