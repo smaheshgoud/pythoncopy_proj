@@ -1,0 +1,83 @@
+pipeline {
+    agent any
+
+    environment {
+        JIRA_PROJECT = 'YOUR_JIRA_PROJECT'
+        JIRA_ISSUE = 'JIRA-123' // Example Jira issue key
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                script {
+                    try {
+                        // Your build steps go here
+                        echo 'Building the project'
+
+                        // Simulating a build failure for demonstration purposes
+                        error 'Build failed'
+                    } catch (Exception e) {
+                        echo "Build failed: ${e.message}"
+                        
+                        // Notify Jira about the failure
+                        jiraSendDeploymentInfo(
+                            site: 'https://your-jira-instance',
+                            issueKeys: [JIRA_ISSUE],
+                            status: 'failed',
+                            environmentId: 'production',
+                            description: 'Build failed during Jenkins pipeline'
+                        )
+
+                        // Mark the build as unstable to prevent subsequent stages
+                        currentBuild.result = 'UNSTABLE'
+                    }
+                }
+            }
+        }
+
+        stage('Test') {
+            when {
+                expression { currentBuild.resultIsBetterOrEqualTo('UNSTABLE') }
+            }
+            steps {
+                script {
+                    // This stage will be skipped if the previous stage failed
+                    echo 'Running tests'
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                expression { currentBuild.resultIsBetterOrEqualTo('UNSTABLE') }
+            }
+            steps {
+                script {
+                    // This stage will be skipped if the previous stage failed
+                    echo 'Deploying to production'
+                }
+            }
+        }
+
+        stage('Notify Jira') {
+            steps {
+                script {
+                    // Notify Jira about the successful deployment
+                    jiraSendDeploymentInfo(
+                        site: 'https://your-jira-instance',
+                        issueKeys: [JIRA_ISSUE],
+                        status: 'successful',
+                        environmentId: 'production',
+                        description: 'Deployment successful'
+                    )
+                }
+            }
+        }
+    }
+}
