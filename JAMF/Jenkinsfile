@@ -1,0 +1,61 @@
+pipeline {
+    agent any
+
+    environment {
+        JAMF_API_URL = "https://your-jamf-pro-server/JSSResource"
+        JAMF_USERNAME = "your-username"
+        JAMF_PASSWORD = "your-password"
+        GIT_REPO_URL = "https://your-git-repo-url"
+        GIT_REPO_CREDENTIALS = credentials('your-git-credentials-id')
+    }
+
+    stages {
+        stage('Download Jamf Settings') {
+            steps {
+                script {
+                    // Use Jamf API to retrieve settings (replace with actual API endpoint)
+                    def settingsData = sh(script: "curl -u ${JAMF_USERNAME}:${JAMF_PASSWORD} -H 'Accept: application/xml' -X GET '${JAMF_API_URL}/settings'", returnStdout: true).trim()
+
+                    // Write settings data to a file
+                    writeFile file: 'jamf_settings.xml', text: settingsData
+                }
+            }
+        }
+
+        stage('Download Jamf Policies') {
+            steps {
+                script {
+                    // Use Jamf API to retrieve policies (replace with actual API endpoint)
+                    def policiesData = sh(script: "curl -u ${JAMF_USERNAME}:${JAMF_PASSWORD} -H 'Accept: application/xml' -X GET '${JAMF_API_URL}/policies'", returnStdout: true).trim()
+
+                    // Write policies data to a file
+                    writeFile file: 'jamf_policies.xml', text: policiesData
+                }
+            }
+        }
+
+        stage('Download Jamf Scripts') {
+            steps {
+                script {
+                    // Use Jamf API to retrieve scripts (replace with actual API endpoint)
+                    def scriptsData = sh(script: "curl -u ${JAMF_USERNAME}:${JAMF_PASSWORD} -H 'Accept: application/xml' -X GET '${JAMF_API_URL}/scripts'", returnStdout: true).trim()
+
+                    // Write scripts data to a file
+                    writeFile file: 'jamf_scripts.xml', text: scriptsData
+                }
+            }
+        }
+
+        stage('Upload to Git Repository') {
+            steps {
+                script {
+                    // Commit and push to Git repository
+                    git branch: 'main', credentialsId: GIT_REPO_CREDENTIALS, url: GIT_REPO_URL
+                    sh 'git add .'
+                    sh 'git commit -m "Update Jamf configurations"'
+                    sh 'git push'
+                }
+            }
+        }
+    }
+}

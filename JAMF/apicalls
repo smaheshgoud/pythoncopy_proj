@@ -1,0 +1,5 @@
+# Example to Retrieve Policies
+curl -u username:password -H "Accept: application/xml" -X GET "https://your-jamf-pro-server/JSSResource/policies"
+
+# Example to Retrieve Scripts
+curl -u username:password -H "Accept: application/xml" -X GET "https://your-jamf-pro-server/JSSResource/scripts"
