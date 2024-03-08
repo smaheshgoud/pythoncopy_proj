@@ -1,0 +1,18 @@
+
+Programming Language	Prerequisites
+Node.js (npm)	- Node.js installed
+- npm (Node Package Manager) installed
+- package.json file exists in the project
+- Dependencies listed in package.json
+Python	- Python installed
+- pip (Python package installer) installed
+- requirements.txt or Pipfile exists in the project
+- Dependencies listed in requirements.txt or Pipfile
+Java (Maven)	- Java installed
+- Apache Maven installed
+- pom.xml file exists in the project
+- Dependencies listed in pom.xml
+.NET	- .NET Core SDK installed
+- .NET project file (.csproj) exists in the project
+- Dependencies listed in the .NET project file
+Ensure these prerequisites are met before running a Snyk scan using the appropriate commands and tools for your development environment.
