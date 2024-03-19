@@ -1,0 +1,39 @@
+$clientId = "YOUR_CLIENT_ID"
+$clientSecret = "YOUR_CLIENT_SECRET"
+$authorizationCode = "AUTHORIZATION_CODE"
+$redirectUri = "REDIRECT_URI"
+$tokenEndpoint = "https://your-jamf-pro-instance/oauth/token"
+
+$tokenRequestParams = @{
+    grant_type = "authorization_code"
+    code = $authorizationCode
+    redirect_uri = $redirectUri
+}
+
+$base64Auth = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("$($clientId):$($clientSecret)"))
+$authHeader = "Basic $base64Auth"
+
+$response = Invoke-RestMethod -Uri $tokenEndpoint -Method Post -Headers @{ Authorization = $authHeader } -Body $tokenRequestParams
+
+$response
+==================
+
+$clientId = "YOUR_CLIENT_ID"
+$clientSecret = "YOUR_CLIENT_SECRET"
+$authorizationCode = "AUTHORIZATION_CODE"
+$redirectUri = "REDIRECT_URI"
+$tokenEndpoint = "https://your-jamf-pro-instance/oauth/token"
+
+$tokenRequestParams = @{
+    grant_type = "authorization_code"
+    code = $authorizationCode
+    redirect_uri = $redirectUri
+}
+
+$base64Auth = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("$($clientId):$($clientSecret)"))
+$authHeader = "Basic $base64Auth"
+
+$response = Invoke-RestMethod -Uri $tokenEndpoint -Method Post -Headers @{ Authorization = $authHeader } -Body $tokenRequestParams
+
+# Output the response to a file
+$response | Out-File -FilePath "access_token_response.txt"
