@@ -36,3 +36,6 @@ Write-Output $responsePolicies
 
 Write-Host "Packages:"
 Write-Output $responsePackages
+
+
+##https://developer.jamf.com/jamf-pro/reference/findcomputerextensionattributes
