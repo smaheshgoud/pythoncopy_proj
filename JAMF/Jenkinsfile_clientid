@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+
+    environment {
+        CLIENT_ID = 'your_client_id'
+        CLIENT_SECRET = 'your_client_secret'
+        JAMF_URL = 'https://dummy.jamfcloud.com'
+    }
+
+    stages {
+        stage('Get Access Token') {
+            steps {
+                script {
+                    def response = sh script: """
+                        access_token=$(curl -s -X POST -H 'Content-Type: application/json' \\
+                        -H 'accept: application/x-www-form-urlencoded' \\
+                        -d '{"client_id": "${CLIENT_ID}", "client_secret": "${CLIENT_SECRET}", "grant_type": "client_credentials"}' \\
+                        ${JAMF_URL}/get-access-token | grep -oP '\"access_token\":\"\K[^"]+')
+                        echo $access_token
+                    """, returnStdout: true
+                    
+                    def accessToken = response.trim()
+                    echo "Access Token: ${accessToken}"
+                    
+                    // Fetch data using the access token
+                    fetchData(accessToken)
+                }
+            }
+        }
+    }
+    
+    // Function to fetch data using access token
+    def fetchData(accessToken) {
+        stage('Fetch Data') {
+            steps {
+                script {
+                    def fetchDataResponse = sh script: """
+                        curl -s -H 'Authorization: Bearer ${accessToken}' \\
+                        ${JAMF_URL}/cloud-azure/id
+                    """, returnStdout: true
+                    
+                    echo "Fetched Data: ${fetchDataResponse}"
+                }
+            }
+        }
+    }
+}
