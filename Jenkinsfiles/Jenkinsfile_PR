@@ -1,0 +1,37 @@
+pipeline {
+    agent any
+    
+    environment {
+        // Replace with your GitHub personal access token with appropriate scopes
+        GITHUB_TOKEN = credentials('github-token')
+    }
+
+    stages {
+        stage('Get PR Description') {
+            steps {
+                script {
+                    // Replace with your GitHub repository details
+                    def repoOwner = 'your-repo-owner'
+                    def repoName = 'your-repo-name'
+                    
+                    // Get the pull request number from the environment (set by the GitHub plugin)
+                    def prNumber = env.CHANGE_ID
+
+                    // Make an API call to GitHub to get the pull request details
+                    def response = sh(
+                        script: """curl -s -H "Authorization: token ${GITHUB_TOKEN}" \
+                                    https://api.github.com/repos/${repoOwner}/${repoName}/pulls/${prNumber}""",
+                        returnStdout: true
+                    ).trim()
+
+                    // Parse the response JSON
+                    def prDetails = readJSON text: response
+                    def prDescription = prDetails.body
+
+                    // Print the PR description
+                    echo "Pull Request Description: ${prDescription}"
+                }
+            }
+        }
+    }
+}
