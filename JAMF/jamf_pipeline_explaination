@@ -1,0 +1,95 @@
+Creating a Jenkins pipeline to retrieve information from Jamf Pro Cloud using REST API involves several steps. You will need to set up a Jenkins pipeline that can make API calls to Jamf Pro, handle authentication, and process the retrieved information.
+
+Here's an example Jenkinsfile that demonstrates how to create a pipeline to fetch information from Jamf Pro Cloud using its REST API.
+
+### Prerequisites
+1. **Jenkins installed and configured.**
+2. **Jenkins plugins for handling HTTP requests (like HTTP Request Plugin).**
+3. **Jamf Pro Cloud credentials stored in Jenkins credentials store.**
+
+### Jenkinsfile Example
+The following example assumes that you have stored your Jamf Pro Cloud credentials in Jenkins using the credentials ID `JAMF_CREDENTIALS`.
+
+```groovy
+pipeline {
+    agent any
+    
+    environment {
+        // Define the environment variables
+        JAMF_API_URL = 'https://your-jamf-instance.jamfcloud.com/api'
+        JAMF_CREDENTIALS = credentials('JAMF_CREDENTIALS') // The credentials ID stored in Jenkins
+    }
+    
+    stages {
+        stage('Retrieve Access Token') {
+            steps {
+                script {
+                    def authResponse = sh(script: """
+                        curl -s -X POST '${JAMF_API_URL}/oauth/token' \
+                        -H 'Content-Type: application/x-www-form-urlencoded' \
+                        -d 'grant_type=client_credentials&client_id=${JAMF_CREDENTIALS_USR}&client_secret=${JAMF_CREDENTIALS_PSW}'
+                    """, returnStdout: true).trim()
+                    
+                    // Parse the response to get the access token
+                    def jsonResponse = new groovy.json.JsonSlurper().parseText(authResponse)
+                    env.ACCESS_TOKEN = jsonResponse.access_token
+                }
+            }
+        }
+        
+        stage('Fetch Information from Jamf Pro') {
+            steps {
+                script {
+                    def response = sh(script: """
+                        curl -s -X GET '${JAMF_API_URL}/your-endpoint' \
+                        -H 'Authorization: Bearer ${ACCESS_TOKEN}'
+                    """, returnStdout: true).trim()
+                    
+                    // Print the response for debugging
+                    echo "API Response: ${response}"
+                    
+                    // Process the response as needed
+                    // For example, you can parse the JSON response and extract specific information
+                    def jsonResponse = new groovy.json.JsonSlurper().parseText(response)
+                    echo "Fetched Information: ${jsonResponse}"
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo 'Pipeline executed successfully!'
+        }
+        failure {
+            echo 'Pipeline execution failed.'
+        }
+    }
+}
+```
+
+### Explanation
+1. **Environment Variables:**
+   - `JAMF_API_URL`: The base URL for the Jamf Pro API.
+   - `JAMF_CREDENTIALS`: Credentials for Jamf Pro, stored in Jenkins credentials store.
+
+2. **Retrieve Access Token Stage:**
+   - Uses a `curl` command to make a POST request to the Jamf Pro OAuth token endpoint.
+   - Parses the JSON response to extract the access token.
+   - Stores the access token in the environment variable `ACCESS_TOKEN`.
+
+3. **Fetch Information from Jamf Pro Stage:**
+   - Uses a `curl` command to make a GET request to a specified endpoint in Jamf Pro.
+   - Includes the access token in the Authorization header.
+   - Parses and processes the JSON response.
+
+4. **Post Actions:**
+   - Prints a success or failure message based on the pipeline execution.
+
+### Notes
+- Ensure the `curl` command is available in your Jenkins environment.
+- Replace `your-endpoint` with the actual endpoint you want to retrieve information from.
+- Adjust the parsing logic in the script steps according to the structure of the JSON response from Jamf Pro.
+- Ensure the `HTTP Request Plugin` is installed in Jenkins if you prefer to use the `httpRequest` step instead of `curl`.
+
+This pipeline provides a basic structure for integrating Jamf Pro Cloud API calls into your Jenkins CI/CD workflows, allowing you to automate tasks and retrieve information programmatically.
