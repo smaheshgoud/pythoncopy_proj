@@ -1,0 +1,67 @@
+pipeline {
+    agent any
+    
+    environment {
+        GITHUB_REPO = 'https://github.com/your-org/your-repo.git'
+        JAMF_URL = 'https://your-jamf-pro-server.com'
+        JAMF_USERNAME = credentials('JAMF_API_USERNAME') // Username stored in Jenkins credentials
+        JAMF_PASSWORD = credentials('JAMF_API_PASSWORD') // Password stored in Jenkins credentials
+    }
+    
+    stages {
+        stage('Clone GitHub Repository') {
+            steps {
+                script {
+                    // Clone the GitHub repository
+                    sh 'git clone ${GITHUB_REPO}'
+                }
+            }
+        }
+
+        stage('Process File') {
+            steps {
+                script {
+                    // Assuming the repo name is 'your-repo'
+                    def filePath = 'your-repo/scripts/id/1'
+                    
+                    // Read the file content
+                    def fileContent = readFile(filePath)
+
+                    // Remove the "script_contents_encoded" field if it exists
+                    def cleanedContent = fileContent.replaceAll('<script_contents_encoded>.*?</script_contents_encoded>', '')
+
+                    // Write the cleaned content to a temporary file
+                    writeFile file: 'temp_script.xml', text: cleanedContent
+
+                    echo "Cleaned File Content: ${cleanedContent}"
+                }
+            }
+        }
+
+        stage('Update File on Jamf Server') {
+            steps {
+                script {
+                    def credentials = "${env.JAMF_USERNAME}:${env.JAMF_PASSWORD}".bytes.encodeBase64().toString()
+                    def apiEndpoint = "${env.JAMF_URL}/JSSResource/scripts/id/1"
+                    
+                    // Use the temporary file as the payload in the PUT request
+                    sh """
+                        curl -X PUT '${apiEndpoint}' \
+                        -H 'Authorization: Basic ${credentials}' \
+                        -H 'Content-Type: application/xml' \
+                        --data-binary @temp_script.xml
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'File updated successfully on Jamf server'
+        }
+        failure {
+            echo 'Pipeline failed'
+        }
+    }
+}
