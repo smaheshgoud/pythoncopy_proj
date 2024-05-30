@@ -1,0 +1,88 @@
+pipeline {
+    agent any
+    
+    environment {
+        GITHUB_REPO = 'https://github.com/your-org/your-repo.git'
+        GITHUB_BRANCH = 'main' // Change to your branch name if needed
+        JAMF_URL = 'https://your-jamf-pro-server.com'
+        JAMF_USERNAME = credentials('JAMF_API_USERNAME') // Username stored in Jenkins credentials
+        JAMF_PASSWORD = credentials('JAMF_API_PASSWORD') // Password stored in Jenkins credentials
+    }
+    
+    stages {
+        stage('Clone GitHub Repository') {
+            steps {
+                script {
+                    // Clone the GitHub repository
+                    sh 'git clone ${GITHUB_REPO}'
+                }
+            }
+        }
+
+        stage('Identify Changed Files') {
+            steps {
+                script {
+                    // Navigate into the cloned repository directory
+                    dir('your-repo') {
+                        // Fetch the latest changes
+                        sh 'git fetch origin'
+                        
+                        // Get the list of files changed in the last commit
+                        def changedFiles = sh(script: 'git diff --name-only HEAD~1 HEAD', returnStdout: true).trim()
+                        echo "Changed Files:\n${changedFiles}"
+                        
+                        // Store the changed files in a variable
+                        env.CHANGED_FILES = changedFiles
+                    }
+                }
+            }
+        }
+
+        stage('Process and Update Files on Jamf Server') {
+            steps {
+                script {
+                    // Split the changed files into a list
+                    def files = env.CHANGED_FILES.split('\n')
+                    
+                    files.each { filePath ->
+                        // Only process files in the scripts/id directory
+                        if (filePath.startsWith('scripts/id/')) {
+                            // Read the file content
+                            def fileContent = readFile("your-repo/${filePath}")
+
+                            // Remove the "script_contents_encoded" field if it exists
+                            def cleanedContent = fileContent.replaceAll('<script_contents_encoded>.*?</script_contents_encoded>', '')
+
+                            // Write the cleaned content to a temporary file
+                            writeFile file: 'temp_script.xml', text: cleanedContent
+
+                            echo "Cleaned File Content: ${cleanedContent}"
+
+                            // Construct the API endpoint URL
+                            def scriptId = filePath.split('/')[2]
+                            def apiEndpoint = "${JAMF_URL}/JSSResource/scripts/id/${scriptId}"
+                            def credentials = "${JAMF_USERNAME}:${JAMF_PASSWORD}".bytes.encodeBase64().toString()
+
+                            // Use the temporary file as the payload in the PUT request
+                            sh """
+                                curl -X PUT '${apiEndpoint}' \
+                                -H 'Authorization: Basic ${credentials}' \
+                                -H 'Content-Type: application/xml' \
+                                --data-binary @temp_script.xml
+                            """
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Files updated successfully on Jamf server'
+        }
+        failure {
+            echo 'Pipeline failed'
+        }
+    }
+}
