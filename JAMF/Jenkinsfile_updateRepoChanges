@@ -1,0 +1,77 @@
+pipeline {
+    agent any
+    
+    parameters {
+        string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Branch to build')
+    }
+    
+    environment {
+        GITHUB_REPO = 'your-username/your-repo' // Replace with your repo
+        GITHUB_CREDENTIALS_ID = 'github-credentials' // Replace with your GitHub credentials ID in Jenkins
+        JAMF_API_URL = 'https://your-jamf-server/api' // Replace with your JAMF API URL
+        JAMF_CREDENTIALS_ID = 'jamf-credentials' // Replace with your JAMF credentials ID in Jenkins
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    echo "Checking out branch: ${params.BRANCH_NAME}"
+                    
+                    checkout([$class: 'GitSCM', 
+                              branches: [[name: "*/${params.BRANCH_NAME}"]], 
+                              doGenerateSubmoduleConfigurations: false, 
+                              extensions: [], 
+                              userRemoteConfigs: [[url: "https://github.com/${env.GITHUB_REPO}.git",
+                                                   credentialsId: env.GITHUB_CREDENTIALS_ID]]])
+                }
+            }
+        }
+
+        stage('Get Modified Files') {
+            steps {
+                script {
+                    def modifiedFiles = sh(script: '''
+                        git diff-tree --no-commit-id --name-only -r $(git log -1 --format=%H)
+                    ''', returnStdout: true).trim().split('\n')
+
+                    echo "Modified or added files: ${modifiedFiles}"
+                    env.MODIFIED_FILES = modifiedFiles.join(',')
+                }
+            }
+        }
+
+        stage('Update JAMF Server') {
+            steps {
+                script {
+                    def modifiedFiles = env.MODIFIED_FILES.split(',')
+                    for (file in modifiedFiles) {
+                        def fileContents = readFile(file)
+                        def fileName = file.split('/').last()
+                        
+                        echo "Updating JAMF Server with file: ${file}"
+
+                        // Update JAMF Server with the file
+                        withCredentials([string(credentialsId: env.JAMF_CREDENTIALS_ID, variable: 'JAMF_TOKEN')]) {
+                            sh """
+                                curl -X PUT "${env.JAMF_API_URL}/scripts/id/${fileName}" \\
+                                     -H "Authorization: Bearer ${JAMF_TOKEN}" \\
+                                     -H "Content-Type: application/json" \\
+                                     --data-binary @${file}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline completed successfully for branch: ${params.BRANCH_NAME}"
+        }
+        failure {
+            echo "Pipeline failed for branch: ${params.BRANCH_NAME}"
+        }
+    }
+}
