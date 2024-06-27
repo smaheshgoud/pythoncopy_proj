@@ -1,0 +1,97 @@
+pipeline {
+    agent any
+
+    environment {
+        // Credentials for GitHub and JAMF
+        GITHUB_CREDENTIALS_ID = 'github-credentials-id'
+        JAMF_SERVER = 'https://your-jamf-server-url'
+        JAMF_CREDENTIALS_ID = 'jamf-credentials-id'
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                git(
+                    url: 'https://github.com/your-organization/your-repo.git',
+                    branch: 'main',
+                    credentialsId: "${env.GITHUB_CREDENTIALS_ID}"
+                )
+            }
+        }
+
+        stage('Check for Changes') {
+            steps {
+                script {
+                    // Check for changes since the last commit
+                    def changes = sh(script: 'git diff --name-only HEAD~1 HEAD', returnStdout: true).trim().split('\n')
+                    echo "Changed files: ${changes}"
+
+                    // Store the list of changed files in a variable
+                    env.CHANGED_FILES = changes.join(' ')
+                }
+            }
+        }
+
+        stage('Push Changes to JAMF') {
+            when {
+                expression { env.CHANGED_FILES != '' }
+            }
+            steps {
+                script {
+                    // Loop through changed files and push to JAMF
+                    for (file in env.CHANGED_FILES.split(' ')) {
+                        echo "Processing ${file}"
+                        
+                        // Read the file content
+                        def fileContent = readFile(file)
+                        
+                        // Remove "script_contents_encoded" if exists
+                        fileContent = fileContent.replaceAll('script_contents_encoded', '')
+
+                        // Prepare the payload
+                        writeFile file: 'payload.txt', text: fileContent
+
+                        // Check if the file exists on JAMF server
+                        def checkResponse = sh(script: """
+                            curl -I -u ${env.JAMF_CREDENTIALS_ID} "${env.JAMF_SERVER}/path/to/api/endpoint/${file}"
+                        """, returnStatus: true)
+
+                        // If the file exists, update it; if not, create it
+                        def response
+                        if (checkResponse == 200) {
+                            echo "Updating existing file ${file} on JAMF server"
+                            response = sh(script: """
+                                curl -X PUT "${env.JAMF_SERVER}/path/to/api/endpoint/${file}" \
+                                -u ${env.JAMF_CREDENTIALS_ID} \
+                                -H "Content-Type: text/plain" \
+                                --data-binary @payload.txt
+                            """, returnStatus: true)
+                        } else {
+                            echo "Creating new file ${file} on JAMF server"
+                            response = sh(script: """
+                                curl -X POST "${env.JAMF_SERVER}/path/to/api/endpoint" \
+                                -u ${env.JAMF_CREDENTIALS_ID} \
+                                -H "Content-Type: text/plain" \
+                                --data-binary @payload.txt
+                            """, returnStatus: true)
+                        }
+
+                        // Check the response
+                        if (response != 0) {
+                            error("Failed to process ${file} on JAMF server")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Changes successfully pushed to JAMF server."
+        }
+        failure {
+            echo "Failed to push changes to JAMF server."
+        }
+    }
+}
