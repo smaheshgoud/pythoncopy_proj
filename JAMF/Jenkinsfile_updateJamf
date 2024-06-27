@@ -8,6 +8,7 @@ pipeline {
         JAMF_CREDENTIALS_ID = 'jamf-credentials-id'
     }
 
+
     stages {
         stage('Clone Repository') {
             steps {
