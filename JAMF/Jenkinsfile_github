@@ -1,0 +1,113 @@
+pipeline {
+    agent any
+
+    environment {
+        GIT_REPO = 'https://github.com/your-repo/sql-queries.git'
+        SQL_SERVER = 'your-msaas-sql-server'
+        SQL_USER = 'your-sql-username'
+        SQL_PASSWORD = 'your-sql-password'
+        DATABASE = 'your-database-name'
+        SONARQUBE_SERVER = 'your-sonarqube-server'
+        SONARQUBE_SCANNER = 'SonarQubeScanner' // Name of the SonarQube scanner configured in Jenkins
+        COVERAGE_REPORT_PATH = 'coverage.xml' // Path to the coverage report
+        GITHUB_REPO = 'your-github-repo' // GitHub repository in the format "username/repo"
+        GITHUB_TOKEN = 'your-github-token' // GitHub token for authentication
+        GIT_COMMIT = '' // Placeholder for the current Git commit SHA
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                script {
+                    GIT_COMMIT = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+                    // Send 'pending' status to GitHub for the build stage
+                    setGitHubBuildStatus('pending', 'Starting build', GIT_COMMIT, 'build')
+                }
+                git url: env.GIT_REPO
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'pip install -r requirements.txt'
+            }
+        }
+
+        stage('Run Tests and Generate Coverage Report') {
+            steps {
+                sh """
+                    pytest --cov=sql --cov-report xml:${env.COVERAGE_REPORT_PATH}
+                """
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            environment {
+                // SonarQube environment variables
+                SONARQUBE_PROJECT_KEY = 'your-project-key'
+                SONARQUBE_PROJECT_NAME = 'your-project-name'
+                SONARQUBE_PROJECT_VERSION = '1.0'
+                SONARQUBE_SOURCE_ENCODING = 'UTF-8'
+            }
+            steps {
+                withSonarQubeEnv(env.SONARQUBE_SERVER) {
+                    sh """
+                        ${env.SONARQUBE_SCANNER} \
+                        -Dsonar.projectKey=${env.SONARQUBE_PROJECT_KEY} \
+                        -Dsonar.projectName=${env.SONARQUBE_PROJECT_NAME} \
+                        -Dsonar.projectVersion=${env.SONARQUBE_PROJECT_VERSION} \
+                        -Dsonar.sources=. \
+                        -Dsonar.sourceEncoding=${env.SONARQUBE_SOURCE_ENCODING} \
+                        -Dsonar.python.coverage.reportPaths=${env.COVERAGE_REPORT_PATH}
+                    """
+                }
+            }
+        }
+
+        stage('Deploy to MSAAS SQL Server') {
+            steps {
+                script {
+                    // Send 'pending' status to GitHub for the deploy stage
+                    setGitHubBuildStatus('pending', 'Starting deployment', GIT_COMMIT, 'deploy')
+                }
+                sh """
+                    sqlcmd -S ${env.SQL_SERVER} -U ${env.SQL_USER} -P ${env.SQL_PASSWORD} -i deploy.sql
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            script {
+                // Send 'success' status to GitHub for both build and deploy stages
+                setGitHubBuildStatus('success', 'Build succeeded', GIT_COMMIT, 'build')
+                setGitHubBuildStatus('success', 'Deployment succeeded', GIT_COMMIT, 'deploy')
+            }
+        }
+        failure {
+            script {
+                // Determine which stage failed and send 'failure' status to GitHub for that stage
+                def failedStage = currentBuild.rawBuild.getLog(10).find { it =~ /Stage/ } ?: 'unknown stage'
+                def failedStageName = (failedStage =~ /Stage \[(.*)\] .* started/)[0][1]
+                
+                if (failedStageName == 'Deploy to MSAAS SQL Server') {
+                    setGitHubBuildStatus('failure', 'Deployment failed', GIT_COMMIT, 'deploy')
+                } else {
+                    setGitHubBuildStatus('failure', 'Build failed', GIT_COMMIT, 'build')
+                }
+            }
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
+
+def setGitHubBuildStatus(String state, String description, String commitSha, String context) {
+    sh """
+        curl -s -X POST -H "Authorization: token ${env.GITHUB_TOKEN}" \
+        -d '{ "state": "${state}", "target_url": "${env.BUILD_URL}", "description": "${description}", "context": "continuous-integration/jenkins/${context}" }' \
+        "https://api.github.com/repos/${env.GITHUB_REPO}/statuses/${commitSha}"
+    """
+}
