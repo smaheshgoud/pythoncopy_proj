@@ -1,7 +1,26 @@
 #!/bin/bash
 
-# Function to check the size of each branch in the repository
-check_branch_sizes() {
+# GitHub personal access token
+GITHUB_TOKEN="your_github_token"
+GITHUB_ORG="your_github_org"
+GITHUB_API_URL="https://api.github.com"
+
+# Function to check if a repository exists on GitHub
+check_github_repo_exists() {
+    local repo_name=$1
+    local response
+    response=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GITHUB_TOKEN" \
+        "$GITHUB_API_URL/repos/$GITHUB_ORG/$repo_name")
+
+    if [[ "$response" -eq 200 ]]; then
+        return 0  # Repository exists
+    else
+        return 1  # Repository does not exist
+    fi
+}
+
+# Function to check branch sizes in the repository
+check_branch_sizes() { 
     local repo_path=$1
     local branch_size_limit="1G"
 
@@ -20,10 +39,10 @@ check_branch_sizes() {
 
     cd - >/dev/null
     return 0  # All branches meet the size limit
-}
+    }
 
-# Function to check the number of branches in the repository
-check_branch_count() {
+# Function to check the branch count
+check_branch_count() { 
     local repo_path=$1
     local branch_count_limit=100
 
@@ -37,40 +56,46 @@ check_branch_count() {
         echo "Branch count exceeds the limit ($branch_count branches)."
         return 1  # Branch count does not meet the limit
     fi
-}
+    }
 
 # Function to clone and migrate repository from Bitbucket to GitHub
 clone_and_migrate_repo() {
     local bitbucket_repo_url=$1
-    local github_repo_url=$2
+    local github_repo_name=$(basename "$bitbucket_repo_url" .git)
+    
+    # Check if GitHub repo already exists
+    if check_github_repo_exists "$github_repo_name"; then
+        echo "Repository $github_repo_name already exists on GitHub. Skipping migration."
+        return
+    fi
 
-    git clone --no-checkout "$bitbucket_repo_url"
-    repo_name=$(basename "$bitbucket_repo_url" .git)
-    cd "$repo_name" || exit
+    # Clone with --mirror
+    git clone --mirror "$bitbucket_repo_url"
+    cd "$github_repo_name" || exit
 
+    # Run size and branch checks
     if check_branch_sizes "." && check_branch_count "."; then
-        # Push to GitHub
-        git remote add github "$github_repo_url"
-        git push --all github
-        git push --tags github
-        echo "Repository $repo_name migrated to GitHub."
+        # Create GitHub repo
+        curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            -d "{\"name\": \"$github_repo_name\", \"private\": true}" \
+            "$GITHUB_API_URL/orgs/$GITHUB_ORG/repos"
+
+        # Push with --mirror to GitHub
+        git remote add github "https://github.com/$GITHUB_ORG/$github_repo_name.git"
+        git push --mirror github
+        echo "Repository $github_repo_name migrated to GitHub."
     else
-        echo "Repository $repo_name does not meet the criteria. Skipping migration."
+        echo "Repository $github_repo_name does not meet the criteria. Skipping migration."
     fi
 
     cd ..
-    rm -rf "$repo_name"
+    rm -rf "$github_repo_name"
 }
 
 # Main script
 repos_file="repos_list.txt"
-github_base_url="https://github.com/<your_github_org>/"
 
 while IFS= read -r bitbucket_repo_url; do
-    # Create GitHub repo URL based on repo name from Bitbucket URL
-    repo_name=$(basename "$bitbucket_repo_url" .git)
-    github_repo_url="${github_base_url}${repo_name}.git"
-    
     echo "Processing repository: $bitbucket_repo_url"
-    clone_and_migrate_repo "$bitbucket_repo_url" "$github_repo_url"
+    clone_and_migrate_repo "$bitbucket_repo_url"
 done < "$repos_file"
