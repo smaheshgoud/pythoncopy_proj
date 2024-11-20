@@ -1,0 +1,43 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Check Files') {
+            steps {
+                script {
+                    // Define the folder to search and the file names
+                    def folder = 'path/to/your/folder'
+                    def inputFiles = [
+                        'file1.sh',
+                        'file with spaces.sh',
+                        'file_with_no_extension',
+                        'file name ver(2.0)',
+                        'latest_file ver(6.5)'
+                    ]
+
+                    inputFiles.each { inputFile ->
+                        // Determine if the file has an extension
+                        def hasExtension = inputFile.matches(".*\\.[^./]+$")
+                        
+                        // Extract base name (without extension) if it exists
+                        def baseFileName = hasExtension ? inputFile.replaceFirst(/\\.[^.]+$/, '') : inputFile
+
+                        // Search for the file with and without extension
+                        def foundFiles = sh(
+                            script: """
+                                find "${folder}" -type f \\( -name "${inputFile}" -o -name "${baseFileName}" \\)
+                            """,
+                            returnStdout: true
+                        ).trim()
+
+                        if (foundFiles) {
+                            echo "File: '${inputFile}' Found Matches:\n${foundFiles}"
+                        } else {
+                            echo "File: '${inputFile}' Not Found"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
