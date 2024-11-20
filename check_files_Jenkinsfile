@@ -17,10 +17,10 @@ pipeline {
 
                     inputFiles.each { inputFile ->
                         // Determine if the file has an extension
-                        def hasExtension = inputFile.matches(".*\\.[^./]+$")
+                        def hasExtension = inputFile ==~ /.*\.[^./]+$/
                         
                         // Extract base name (without extension) if it exists
-                        def baseFileName = hasExtension ? inputFile.replaceFirst(/\\.[^.]+$/, '') : inputFile
+                        def baseFileName = hasExtension ? inputFile.replaceFirst(/\.[^.]+$/, '') : inputFile
 
                         // Search for the file with and without extension
                         def foundFiles = sh(
