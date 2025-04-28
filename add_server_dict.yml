@@ -1,0 +1,25 @@
+updates_list:
+  - parent_key: "log"
+    list_match_key: ""
+    list_match_value: ""
+    updates:
+      - new_key: "rotateCount"
+        new_value: "15"
+      - new_key: "path"
+        new_value: "Server_new.log"
+
+  - parent_key: "tasks"
+    list_match_key: ""
+    list_match_value: ""
+    updates:
+      - new_key: "interval"
+        new_value: "8"
+      - new_key: "enabled"
+        new_value: "false"
+
+  - parent_key: "listeners"
+    list_match_key: "port"
+    list_match_value: "443"
+    updates:
+      - new_key: "certificate"
+        new_value: "new-cert"
